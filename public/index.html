@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Productos</h1>
+    <button id="btn-create-product">Crear producto</button>
+    <table id="products-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Categoría</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="products-tbody">
+            <!-- Aquí se renderizarán los productos -->
+        </tbody>
+    </table>
+
+    <!-- Modal para crear/editar productos -->
+    <div id="modal-container">
+        <div id="modal">
+            <h2 id="modal-title">Crear producto</h2>
+            <form id="product-form">
+                <label for="name">Nombre:</label>
+                <input type="text" id="name" name="name">
+
+
+                <label for="category">Categoría:</label>
+                <input type="text" id="category" name="category">
+
+
+                <label for="description">Descripción:</label>
+                <textarea id="description" name="description"></textarea>
+
+
+                <label for="price">Precio:</label>
+                <input type="number" id="price" name="price">
+
+
+                <button id="btn-save-product">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios@0.21.1/dist/axios.min.js"></script>
+    <script>
+        const apiUrl = 'http://localhost:3000';
+        let products = [];
+
+        // Obtener productos
+        axios.get(`${apiUrl}/getProducts`)
+           .then(response => {
+                products = response.data.data;
+                renderProducts();
+            })
+           .catch(error => {
+                console.error(error);
+            });
+
+        // Crear producto
+        document.getElementById('btn-create-product').addEventListener('click', () => {
+            document.getElementById('modal-title').innerText = 'Crear producto';
+            document.getElementById('product-form').reset();
+            document.getElementById('modal-container').style.display = 'block';
+        });
+
+        // Guardar producto
+        document.getElementById('btn-save-product').addEventListener('click', () => {
+            const formData = new FormData(document.getElementById('product-form'));
+            const data = {
+                name: formData.get('name'),
+                category: formData.get('category'),
+                description: formData.get('description'),
+                price: formData.get('price')
+            };
+
+            if (document.getElementById('modal-title').innerText === 'Crear producto') {
+                axios.post(`${apiUrl}/createProduct`, data)
+                   .then(response => {
+                        products.push(response.data);
+                        renderProducts();
+                        document.getElementById('modal-container').style.display = 'none';
+                    })
+                   .catch(error => {
+                        console.error(error);
+                    });
+            } else {
+                const id = document.getElementById('modal-title').dataset.id;
+                axios.put(`${apiUrl}/updateProduct/${id}`, data)
+                   .then(response => {
+                        const index = products.findIndex(product => product.id === id);
+                        products[index] = response.data;
+                        renderProducts();
+                        document.getElementById('modal-container').style.display = 'none';
+                    })
+                   .catch(error => {
+                        console.error(error);
+                    });
+            }
+        });
+
+        // Eliminar producto
+        document.addEventListener('click', event => {
+            if (event.target.classList.contains('btn-delete-product')) {
+                const id = event.target.dataset.id;
+                axios.delete(`${apiUrl}/deleteProduct/${id}`)
+                   .then(response => {
+                        const index = products.findIndex(product => product.id === id);
+                        products.splice(index, 1);
+                        renderProducts();
+                    })
+                   .catch(error => {
+                        console.error(error);
+                    });
+            }
+        });
+
+        // Renderizar productos
+        function renderProducts() {
+            const tbody = document.getElementById('products-tbody');
+            tbody.innerHTML = '';
+            products.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.id}</td>
+                    <td>${product.name}</td>
+                    <td>${product.category}</td>
+                    <td>${product.description}</td>
+                    <td>${product.price}</td>
+                    <td>
+                        <button class="btn-edit-product" data-id="${product.id}">Editar</button>
+                        <button class="btn-delete-product" data-id="${product.id}">Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Editar producto
+        document.addEventListener('click', event => {
+            if (event.target.classList.contains('btn-edit-product')) {
+                const id = event.target.dataset.id;
+                const product = products.find(product => product.id === id);
+                document.getElementById('modal-title').innerText = 'Editar producto';
+                document.getElementById('modal-title').dataset.id = id;
+                document.getElementById('name').value = product.name;
+                document.getElementById('category').value = product.category;
+                document.getElementById('description').value = product.description;
+                document.getElementById('price').value = product.price;
+                document.getElementById('modal-container').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
